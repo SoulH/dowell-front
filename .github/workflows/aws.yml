@@ -1,0 +1,46 @@
+name: Deploy to S3
+
+on:
+  push:
+    branches: [ "main" ]
+
+env:
+  API_URL: "https://ztkq96cij6.execute-api.ap-southeast-2.amazonaws.com/production/api"
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    name: Deploy
+    runs-on: ubuntu-latest
+    environment: production
+    defaults:
+      run:
+        working-directory: /tmp
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v3
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ secrets.AWS_REGION }}
+
+    - name: Clone
+      run: git clone https://github.com/SoulH/dowell-front.git
+    
+    - name: Install dependencies
+      run: cd dowell-front && npm i
+
+    - name: Make .env
+      run: echo 'API_URL="${{ env.API_URL }}"' > dowell-front/.env
+
+    - name: Build
+      run: cd dowell-front && npm run build
+    
+    - name: Upload
+      run: aws s3 cp dowell-front/dist/ s3://dowell-front-production/ --recursive
